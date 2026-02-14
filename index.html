@@ -153,22 +153,7 @@
                 <div><h3 style="margin:0; font-size:14px;">টাস্ক ১ (৳১০)</h3><p style="margin:2px 0 0; font-size:11px; color:#666;">টেলিগ্রাম আপডেট চ্যানেল</p></div>
                 <button id="btn-t1" class="v-btn" style="width: auto; padding: 8px 15px;" onclick="joinTask(1, 'https://t.me/bachelor_point_updates')">JOIN</button>
             </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid var(--blue); margin-bottom: 15px;">
-                <div><h3 style="margin:0; font-size:14px;">টাস্ক ২ (৳১০)</h3><p style="margin:2px 0 0; font-size:11px; color:#666;">টেলিগ্রাম চ্যানেল ২</p></div>
-                <button id="btn-t2" class="v-btn" style="width: auto; padding: 8px 15px;" onclick="joinTask(2, 'https://t.me/Becelor_Point_5')">JOIN</button>
             </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid var(--blue); margin-bottom: 15px;">
-                <div><h3 style="margin:0; font-size:14px;">টাস্ক ৩ (৳১০)</h3><p style="margin:2px 0 0; font-size:11px; color:#666;">টেলিগ্রাম চ্যানেল ৩</p></div>
-                <button id="btn-t3" class="v-btn" style="width: auto; padding: 8px 15px;" onclick="joinTask(3, 'https://t.me/Bachelor_Point_Seasonnn')">JOIN</button>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid var(--blue);">
-                <div><h3 style="margin:0; font-size:14px;">টাস্ক ৪ (৳৫)</h3><p style="margin:2px 0 0; font-size:11px; color:#666;">হোয়াটসঅ্যাপ চ্যানেল</p></div>
-                <button id="btn-t4" class="v-btn" style="width: auto; padding: 8px 15px;" onclick="joinTask(4, 'https://www.whatsapp.com/channel/0029Vb7EdqP30LKQmhZGKg3L')">JOIN</button>
-            </div>
-        </div>
     </div>
 
     <div id="p-refer" class="page">
@@ -255,9 +240,9 @@
             document.getElementById('head-img').src = user.photo;
             document.getElementById('u-img').src = user.photo;
             document.getElementById('ref-url').innerText = `https://t.me/${BOT_NAME}?start=${user.id}`;
-            [1,2,3,4].forEach(n => { 
+            [1].forEach(n => { 
                 const b = document.getElementById('btn-t'+n);
-                if(user['t'+n]) { b.innerText = "DONE"; b.style.background = "#16a34a"; b.onclick = null; }
+                if(b && user['t'+n]) { b.innerText = "DONE"; b.style.background = "#16a34a"; b.onclick = null; }
             });
             localStorage.setItem('mr_v_ultimate_pro', JSON.stringify(user));
             db.ref('users/' + user.id).update(user);
@@ -272,7 +257,7 @@
         }
 
         function claimTask(num) {
-            const rewards = { 1: 10, 2: 10, 3: 10, 4: 5 };
+            const rewards = { 1: 10 };
             user.bal += rewards[num];
             user['t'+num] = true;
             syncUI();
@@ -310,6 +295,13 @@
                     refData.bal += 10;
                     refData.refs += 1;
                     db.ref('users/' + refBy).update(refData);
+                    
+                    // ইনবক্সে নোটিফিকেশন পাঠানোর ইভেন্ট (Firebase)
+                    db.ref('notifications/' + refBy).push({
+                        msg: `আপনার লিঙ্কে একজন জয়েন করেছে! আপনি ১০ টাকা বোনাস পেয়েছেন। মোট রেফার: ${refData.refs}`,
+                        time: Date.now()
+                    });
+                    
                     localStorage.setItem('ref_done', 'true');
                 }
             });
@@ -341,7 +333,8 @@
 
         function startProcess(id) {
             const lock = localStorage.getItem('lock_' + id);
-            if (lock && (Date.now() - lock < LOCK_TIME)) return toast("ভিডিওটি লক আছে!", "error");
+            // ভিডিও লক থাকলে "ইনবক্স চেক করুন" নোটিফিকেশন আসবে
+            if (lock && (Date.now() - lock < LOCK_TIME)) return toast("ইনবক্স চেক করুন", "error");
             let adData = JSON.parse(localStorage.getItem('ad_p_final')) || { c: 0, d: new Date().toLocaleDateString() };
             if (adData.d !== new Date().toLocaleDateString()) { adData.c = 0; adData.d = new Date().toLocaleDateString(); }
             if (adData.c < AD_LIMIT) {
@@ -362,33 +355,4 @@
             user.bal -= a; 
             const wId = Date.now();
             const withdrawData = { uid: user.id, name: user.name, number: n, amount: a, method: selectedMethod, status: "Pending", date: new Date().toLocaleDateString() };
-            db.ref('withdrawals/' + wId).set(withdrawData).then(() => {
-                const h = JSON.parse(localStorage.getItem('mr_h_final_pro')) || [];
-                h.unshift({ ...withdrawData, id: wId });
-                localStorage.setItem('mr_h_final_pro', JSON.stringify(h));
-                syncUI(); renderH();
-                toast("রিকোয়েস্ট পাঠানো হয়েছে!");
-            });
-        }
-
-        db.ref('withdrawals').on('child_removed', (oldSnap) => {
-            const data = oldSnap.val();
-            if (data.uid === user.id && data.status === "Cancelled") {
-                user.bal += data.amount;
-                syncUI();
-                toast(`উইথড্র বাতিল হয়েছে, ৳${data.amount} ফেরত দেয়া হয়েছে!`, 'error');
-            }
-        });
-
-        function renderH() {
-            const h = JSON.parse(localStorage.getItem('mr_h_final_pro')) || []; 
-            const list = document.getElementById('h-list-ui'); 
-            if (h.length === 0) return;
-            list.innerHTML = h.map(x => `<div class="h-item"><div><strong style="font-size:13px;">${x.number} (${x.method})</strong><br><small style="color:#64748b">${x.date}</small></div><div style="text-align:right"><strong style="color:var(--blue); font-size:13px;">৳${x.amount}</strong><br><small style="color:#f59e0b; font-weight:800; font-size:10px;">${x.status}</small></div></div>`).join('');
-        }
-
-        function filterVids() { const q = document.getElementById('episodeSearch').value.trim(); renderVids(q); }
-        syncUI(); renderH();
-    </script>
-</body>
-</html>
+            db.re
