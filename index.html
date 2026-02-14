@@ -126,7 +126,7 @@
         <div class="user-meta">
             <img id="head-img" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
             <div>
-                <span id="u-name-top" style="font-weight: 800; font-size: 15px;">Loading...</span><br>
+                <span id="u-name-top" style="font-weight: 800; font-size: 15px;">User</span><br>
                 <small id="u-id-top" style="font-weight: 800; font-size: 11px; color: var(--blue);">ID: 000000</small>
             </div>
         </div>
@@ -149,11 +149,11 @@
         <div class="card-pro">
             <h2 style="color: var(--blue); margin-top:0;">Daily Rewards</h2>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid var(--blue); margin-bottom: 15px;">
+            <div id="t1-container" style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid var(--blue); margin-bottom: 15px;">
                 <div><h3 style="margin:0; font-size:14px;">টাস্ক ১ (৳১০)</h3><p style="margin:2px 0 0; font-size:11px; color:#666;">টেলিগ্রাম আপডেট চ্যানেল</p></div>
                 <button id="btn-t1" class="v-btn" style="width: auto; padding: 8px 15px;" onclick="joinTask(1, 'https://t.me/bachelor_point_updates')">JOIN</button>
             </div>
-            </div>
+        </div>
     </div>
 
     <div id="p-refer" class="page">
@@ -171,7 +171,7 @@
             <div class="profile-pic-box">
                 <img id="u-img" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
             </div>
-            <h2 id="u-name-val" style="margin: 5px 0; color: var(--dark); font-weight: 900; font-size: 26px;">...</h2>
+            <h2 id="u-name-val" style="margin: 5px 0; color: var(--dark); font-weight: 900; font-size: 26px;">User</h2>
             <div style="font-size: 40px; font-weight: 900; color: var(--blue);">৳ <span id="u-bal-val">0</span></div>
             <span style="background: #f1f5f9; padding: 5px 15px; border-radius: 50px; font-size: 12px; font-weight: bold; color: var(--blue);">UID: <span id="u-id-val">000000</span></span>
         </div>
@@ -208,12 +208,16 @@
         const AD_LIMIT = 4;
         let selectedMethod = "Bkash";
 
-        const db = firebase.initializeApp({ databaseURL: "https://bachelor-point-season-5-default-rtdb.firebaseio.com/" }).database();
+        // Firebase Initialization Fix
+        const firebaseConfig = { databaseURL: "https://bachelor-point-season-5-default-rtdb.firebaseio.com/" };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.database();
+        
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // ইউজার ডাটা হ্যান্ডলিং
+        // ইউজার ডাটা হ্যান্ডলিং ফিক্স
         let tgUser = tg.initDataUnsafe?.user || { id: "000000", first_name: "User", photo_url: "" };
         let user = JSON.parse(localStorage.getItem('mr_v_ultimate_pro')) || {
             bal: 0, t1: false, t2: false, t3: false, t4: false, refs: 0, 
@@ -240,10 +244,10 @@
             document.getElementById('head-img').src = user.photo;
             document.getElementById('u-img').src = user.photo;
             document.getElementById('ref-url').innerText = `https://t.me/${BOT_NAME}?start=${user.id}`;
-            [1].forEach(n => { 
-                const b = document.getElementById('btn-t'+n);
-                if(b && user['t'+n]) { b.innerText = "DONE"; b.style.background = "#16a34a"; b.onclick = null; }
-            });
+            
+            const b1 = document.getElementById('btn-t1');
+            if(b1 && user.t1) { b1.innerText = "DONE"; b1.style.background = "#16a34a"; b1.onclick = null; }
+            
             localStorage.setItem('mr_v_ultimate_pro', JSON.stringify(user));
             db.ref('users/' + user.id).update(user);
         }
@@ -257,11 +261,10 @@
         }
 
         function claimTask(num) {
-            const rewards = { 1: 10 };
-            user.bal += rewards[num];
-            user['t'+num] = true;
+            user.bal += 10;
+            user.t1 = true;
             syncUI();
-            toast(`৳${rewards[num]} বোনাস যুক্ত হয়েছে!`);
+            toast(`৳১০ বোনাস যুক্ত হয়েছে!`);
         }
 
         function nav(id, el) {
@@ -286,6 +289,7 @@
             toast("রেফার লিঙ্ক কপি হয়েছে!");
         }
 
+        // রেফারেল সিস্টেম ফিক্স
         const urlParams = new URLSearchParams(window.location.search);
         const refBy = urlParams.get('start');
         if (refBy && refBy != user.id && !localStorage.getItem('ref_done')) {
@@ -295,33 +299,45 @@
                     refData.bal += 10;
                     refData.refs += 1;
                     db.ref('users/' + refBy).update(refData);
-                    
-                    // ইনবক্সে নোটিফিকেশন পাঠানোর ইভেন্ট (Firebase)
                     db.ref('notifications/' + refBy).push({
                         msg: `আপনার লিঙ্কে একজন জয়েন করেছে! আপনি ১০ টাকা বোনাস পেয়েছেন। মোট রেফার: ${refData.refs}`,
                         time: Date.now()
                     });
-                    
                     localStorage.setItem('ref_done', 'true');
                 }
             });
         }
 
+        // ভিডিও রেন্ডারিং ফিক্স
         let allVids = {};
-        db.ref('videos').on('value', snap => { allVids = snap.val() || {}; renderVids(); });
+        db.ref('videos').on('value', snap => { 
+            allVids = snap.val() || {}; 
+            renderVids(); 
+        }, err => {
+            document.getElementById('v-list').innerHTML = "ডাটাবেজ কানেকশন সমস্যা!";
+        });
 
         function renderVids(query = "") {
             const container = document.getElementById('v-list');
             container.innerHTML = "";
             let keys = Object.keys(allVids);
-            keys.sort((a, b) => { const nA = parseInt(allVids[a].name.replace(/\D/g, "")) || 0; const nB = parseInt(allVids[b].name.replace(/\D/g, "")) || 0; return nB - nA; });
+            if (keys.length === 0) { container.innerHTML = "কোনো ভিডিও পাওয়া যায়নি!"; return; }
+            
+            keys.sort((a, b) => { 
+                const nA = parseInt(allVids[a].name.replace(/\D/g, "")) || 0; 
+                const nB = parseInt(allVids[b].name.replace(/\D/g, "")) || 0; 
+                return nB - nA; 
+            });
+
             keys.forEach(id => {
                 const v = allVids[id];
                 const match = v.name.match(/Episode\s+(\d+)/i);
                 const epNumber = match ? match[1] : "";
                 if (query !== "" && epNumber !== query) return;
+                
                 const lock = localStorage.getItem('lock_' + id);
                 const isL = lock && (Date.now() - lock < LOCK_TIME);
+                
                 container.innerHTML += `<div class="v-card"><div class="v-card-inner">
                     <div class="v-thumb"><img src="${v.photo}"></div>
                     <div class="v-info">
@@ -333,26 +349,27 @@
 
         function startProcess(id) {
             const lock = localStorage.getItem('lock_' + id);
-            // ভিডিও লক থাকলে "ইনবক্স চেক করুন" নোটিফিকেশন আসবে
+            // আপনার চাহিদা মতো লক নোটিফিকেশন ফিক্স
             if (lock && (Date.now() - lock < LOCK_TIME)) return toast("ইনবক্স চেক করুন", "error");
+            
             let adData = JSON.parse(localStorage.getItem('ad_p_final')) || { c: 0, d: new Date().toLocaleDateString() };
             if (adData.d !== new Date().toLocaleDateString()) { adData.c = 0; adData.d = new Date().toLocaleDateString(); }
+            
             if (adData.c < AD_LIMIT) {
-                if (typeof show_10525370 === 'function') { show_10525370().then(() => { adData.c++; localStorage.setItem('ad_p_final', JSON.stringify(adData)); finalize(id); });
+                if (typeof show_10525370 === 'function') { 
+                    show_10525370().then(() => { adData.c++; localStorage.setItem('ad_p_final', JSON.stringify(adData)); finalize(id); });
                 } else finalize(id);
             } else finalize(id);
         }
 
-        function finalize(id) { localStorage.setItem('lock_' + id, Date.now()); renderVids(); window.location.href = `https://t.me/${BOT_NAME}?start=${id}`; }
+        function finalize(id) { 
+            localStorage.setItem('lock_' + id, Date.now()); 
+            renderVids(); 
+            window.location.href = `https://t.me/${BOT_NAME}?start=${id}`; 
+        }
 
         function doWithdraw() {
             const n = document.getElementById('w-num').value; 
             const a = parseInt(document.getElementById('w-amt').value);
             if (n.length < 11 || isNaN(a)) return toast("সঠিক তথ্য দিন!", "error");
-            if (user.refs < 25) return toast("২৫টি রেফার লাগবে!", "error");
-            if (a < 250) return toast("মিনিমাম ২৫০ টাকা!", "error");
-            if (user.bal < a) return toast("ব্যালেন্স নেই!", "error");
-            user.bal -= a; 
-            const wId = Date.now();
-            const withdrawData = { uid: user.id, name: user.name, number: n, amount: a, method: selectedMethod, status: "Pending", date: new Date().toLocaleDateString() };
-            db.re
+            if (user.
