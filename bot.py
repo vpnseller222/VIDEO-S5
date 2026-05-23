@@ -68,8 +68,8 @@ class AdminSettings(StatesGroup):
 def get_admin_kb():
     return ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="➕ Add Video"), KeyboardButton(text="🔕 Delete Video")],
-        [KeyboardButton(text="📢 BOT NOTICE"), KeyboardButton(text="⚙️ SET VIDEO UPDATE")],
-        [KeyboardButton(text="🔙 Back to Menu")]
+        [KeyboardButton(text="📢 BOT NOTICE"), KeyboardButton(text="📊 Total Users")], # এখানে বাটন যুক্ত করা হয়েছে
+        [KeyboardButton(text="⚙️ SET VIDEO UPDATE"), KeyboardButton(text="🔙 Back to Menu")]
     ], resize_keyboard=True)
 
 def get_back_kb():
@@ -322,6 +322,22 @@ async def notice_broadcast(message: Message, state: FSMContext):
     await state.clear()
 
 # --- ১৩. মেইন রানার ---
+@dp.message(F.text == "📊 Total Users")
+async def show_total_users(message: Message):
+    if message.from_user.id in ADMIN_LIST:
+        users_ref = firebase_db.reference('users').get()
+        
+        if users_ref:
+            count = len(users_ref)
+            await message.answer(
+                f"📊 <b>বট ইউজার স্ট্যাটিসটিকস</b>\n\n"
+                f"👥 মোট ইউজার সংখ্যা: <b>{count}</b> জন।\n"
+                f"📡 ডাটা সোর্স: Firebase Realtime DB",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("❌ ডাটাবেজে এখনো কোনো ইউজার ডাটা নেই।")
+
 async def main():
     print("🤖 Bot is Starting with Cloud Database...")
     asyncio.create_task(send_weekly_backup())
